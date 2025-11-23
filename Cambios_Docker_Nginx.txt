@@ -1,0 +1,82 @@
+Cambios de configuración Docker/Nginx
+
+Fecha: 2025-11-13 14:39:48
+
+Resumen
+Se aplicó la Opción B: montar todo el proyecto en /var/www y configurar Nginx para servir desde el directorio public.
+
+Archivos modificados
+
+docker-compose.yml
+Cambios:
+- nginx.volumes: ahora monta ./:/var/www
+- php.volumes: ahora monta ./:/var/www
+
+Contenido actual:
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx_dev
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+
+  php:
+    image: php:8.2-fpm
+    container_name: php_dev
+    volumes:
+      - ./:/var/www
+
+  db:
+    image: mariadb:latest
+    container_name: mariadb_dev
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: copypaste
+      MYSQL_USER: devuser
+      MYSQL_PASSWORD: devpass
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:
+
+nginx/default.conf
+Cambios:
+- root cambiado a /var/www/public
+- fastcgi_param SCRIPT_FILENAME apunta a /var/www/public$fastcgi_script_name
+
+Contenido actual:
+
+server {
+    listen 80;
+    server_name _;
+
+    # Serve site from public directory
+    root /var/www/public;
+    index index.php index.html;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        # Point to the public directory explicitly
+        fastcgi_param SCRIPT_FILENAME /var/www/public$fastcgi_script_name;
+        fastcgi_pass php:9000;
+        fastcgi_index index.php;
+    }
+
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|webp)$ {
+        try_files $uri =404;
+        expires 7d;
+        access_log off;
+    }
+}

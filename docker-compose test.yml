@@ -1,0 +1,32 @@
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx_dev
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www
+      - ./nginx:/etc/nginx/conf.d:ro
+    depends_on:
+      - php
+
+  php:
+    build: .
+    container_name: php_dev
+    volumes:
+      - ./:/var/www
+
+  db:
+    image: mariadb:latest
+    container_name: mariadb_dev
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: copypaste
+      MYSQL_USER: devuser
+      MYSQL_PASSWORD: devpass
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:
